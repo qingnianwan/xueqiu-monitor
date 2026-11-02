@@ -1,0 +1,14 @@
+{
+  "updated_at": "2026-11-02T06:26:23.503Z",
+  "last_run_at": null,
+  "last_success_at": "2026-11-02T06:26:23.503Z",
+  "last_fetch_ok": null,
+  "consecutive_failures": 0,
+  "source_status": "init",
+  "last_error": null,
+  "cold_post_hours": 72,
+  "last_suppressed_cold": 0,
+  "deliveries": { "total": 0, "pending": 0, "sent": 0, "dead": 0, "notified_ids": 462 },
+  "seen_count": 708,
+  "monitor": { "user_id": "3058599833", "user_name": "买股票的老木匠" }
+}
