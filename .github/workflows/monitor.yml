@@ -69,15 +69,22 @@ jobs:
             echo "==================== cycle $i @ $(date -u +%H:%M:%S)Z ===================="
             node poll_xueqiu_10m.mjs --once || echo "poll 退出码非 0（继续循环）"
 
-            if [ $((i % 7)) -eq 0 ]; then
-              git add xueqiu_sub/state.json xueqiu_sub/archive.md xueqiu_sub/health.json xueqiu_sub/deliveries.json 2>/dev/null
+            # 每 30 轮（约 90 分钟）回写一次，而不是 7 轮。
+            # 四个文件合计约 500KB，回写太勤会让仓库快速膨胀（7 轮≈35MB/天）。
+            # 为什么四个都要提交、不能省：
+            #   · health.json      —— 看门狗判活依据，不提交看门狗会误报
+            #   · state.json       —— seen 去重 + 断档检测
+            #   · deliveries.json  —— notified_ids 是去重的唯一事实依据，不提交会重复发信
+            #   · archive.md       —— 帖子正文归档，丢了就不可回溯（雪球只给最新 20 条）
+            if [ $((i % 30)) -eq 0 ]; then
+              git add xueqiu_sub/state.json xueqiu_sub/health.json xueqiu_sub/deliveries.json xueqiu_sub/archive.md 2>/dev/null
               git diff --cached --quiet || { git commit -q -m "chore: state [skip ci]"; git push -q || true; }
             fi
 
             sleep 140
           done
 
-          git add xueqiu_sub/state.json xueqiu_sub/archive.md xueqiu_sub/health.json xueqiu_sub/deliveries.json 2>/dev/null
+          git add xueqiu_sub/state.json xueqiu_sub/health.json xueqiu_sub/deliveries.json xueqiu_sub/archive.md 2>/dev/null
           git diff --cached --quiet || { git commit -q -m "chore: state [skip ci]"; git push -q || true; }
 
           if [ -n "$GH_PAT" ]; then
