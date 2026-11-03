@@ -1,0 +1,48 @@
+name: 雪球监控 · 看门狗
+
+# 判活依据是仓库里的 health.json（主循环每轮写入），不依赖主循环自己报平安。
+# 用途：自我接力断了 / 主 run 异常退出 / 抓取连续失败 → 独立发一封告警邮件。
+#
+# ⚠️ 已知局限：它跑在同一个仓库里。如果整个仓库的 Actions 被停用，
+#    看门狗也不会跑，届时不会有任何告警。要覆盖这种情况需要仓库外的调度
+#    （例如本机计划任务跑 watchdog.mjs，或另一平台的定时器）。
+on:
+  schedule:
+    - cron: '17 * * * *'   # 每小时一次；cron 不准没关系，看门狗只需 1 小时内跑到
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 从 Secrets 注入邮箱配置
+        env:
+          QQ_USER: ${{ secrets.QQ_USER }}
+          QQ_PASS: ${{ secrets.QQ_PASS }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: |
+          mkdir -p xueqiu_sub
+          node -e "
+            const fs=require('fs');
+            fs.writeFileSync('xueqiu_sub/email.json', JSON.stringify({
+              user: process.env.QQ_USER,
+              pass: process.env.QQ_PASS,
+              to: process.env.EMAIL_TO
+            }));
+          "
+
+      - name: 判活（读仓库内 health.json）
+        env:
+          WATCHDOG_HEALTH_URL: xueqiu_sub/health.json
+          WATCHDOG_STALE_MINUTES: '30'
+        run: node watchdog.mjs --verbose
